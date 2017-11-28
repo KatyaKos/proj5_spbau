@@ -45,7 +45,7 @@ function walkTextNodes(node, path, callback) {
             var data = childNodes[i].data.split(/\s+/);
             for (var j = 0; j < data.length; j++) {
                 if (data[j].replace(/\s*/g, '') == '') continue;
-                result += "0\t" + "node[0]=" + data[j] + "\tpath[0]=" + path + '\n';
+                result += "-1\t" + "node[0]=" + data[j] + "\tpath[0]=" + path + '\n';
             }
         }
     }
@@ -65,6 +65,7 @@ function getText(callback) {
 
 function download(filename, text) {
     getText((text) => {
+        text = "__BOS__\n" + text + "__EOS__\n"
         var element = document.createElement('a');
         var blob = new Blob([text], { type: "text/plain;charset=utf-8" });
         element.href = window.URL.createObjectURL(blob);
