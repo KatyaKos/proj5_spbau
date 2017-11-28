@@ -1,17 +1,22 @@
 import javafx.util.Pair;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 
 //Gradient Descent
 public class TrainCrf extends CrfImpl {
 
-    private Double alpha = 0.005;
+    private Double alpha = 0.01;
 
-    private int steps = 1;
+    private int steps = 100;
 
     private ArrayList<ArrayList<Integer>> hiddens;
     private ArrayList<ArrayList<HashMap<String, String>>> observations;
+    private ArrayList<Integer> hids = new ArrayList<>();
+    private ArrayList<HashMap<String, String>> observs = new ArrayList<>();
+
+    private ArrayList<Double> dfTails = new ArrayList<>();
 
     public TrainCrf(ArrayList<ArrayList<Integer>> hiddens, ArrayList<ArrayList<HashMap<String, String>>> observations) {
         super();
@@ -19,9 +24,21 @@ public class TrainCrf extends CrfImpl {
         this.observations = observations;
     }
 
-    private Double countFfuncMultP(int k, Integer hid, String obs1, String obs2, int i) {
-        return getFFunction(k, new Integer[] {0, hid}, new String[] {obs1, obs2}) * countNthProbability(i, 0) +
-                getFFunction(k, new Integer[] {1, hid}, new String[] {obs1, obs2}) * countNthProbability(i,1);
+    private Double countDfTail(int k, int t) {
+        if (dfTails.get(t) != null) return dfTails.get(t);
+        String[] attrs = new String[] {observs.get(t).get("node"), observs.get(t).get("path")};
+        Double deltaF0 = getFFunction(k, new Integer[]{-1, 1}, attrs) - getFFunction(k, new Integer[]{-1, -1}, attrs);
+        Double deltaF1 = getFFunction(k, new Integer[]{1, 1}, attrs) - getFFunction(k, new Integer[]{1, -1}, attrs);
+        Double pfSum = countProbability(t, -1) * deltaF0 + countProbability(t, 1) * deltaF1;
+        Double res = pfSum;
+        if (t != 0) {
+            Double power = countFuncsSum(t);
+            Double lambdaTail = Math.exp(-power) * Math.pow(countProbability(t, 1), 2) * deltaF1 -
+                    Math.exp(power) * Math.pow(countProbability(t, -1), 2) * deltaF0;
+            res += lambdas.get(k) * lambdaTail * countDfTail(k, t - 1);
+        }
+        dfTails.set(t, res);
+        return res;
     }
 
     private ArrayList<Double> dlambdaFunc() {
@@ -29,19 +46,14 @@ public class TrainCrf extends CrfImpl {
         for (int k = 0; k < lambdas.size(); k++){
             Double res = 0d;
             for (int m = 0; m < hiddens.size(); m++) {
-                ArrayList<Integer> hids = hiddens.get(m);
-                ArrayList<HashMap<String, String>> observs = observations.get(m);
+                hids = hiddens.get(m);
+                observs = observations.get(m);
+                dfTails = new ArrayList<>(Collections.nCopies(observs.size(), null));
                 initializeLabelsData(observs);
-                ArrayList<Double> probabilities = new ArrayList<>();
-                for (int i = 0; i < hids.size(); i++) probabilities.add(countNthProbability(i, hids.get(i)));
-                Double sumEfp = 0d;
-                Double sumFp = 0d;
-                for (int i = 1; i < hids.size(); i++) {
-                    Double fp = countFfuncMultP(k, hids.get(i), observs.get(i).get("node"), observs.get(i).get("path"), i - 1);
-                    sumEfp += fp * probabilities.get(i);
-                    sumFp += fp;
+                for (int t = 1; t < hids.size(); t++) {
+                    if (hids.get(t) == 1) res += countProbability(t, -1) * countDfTail(k, t - 1);
+                    else res += -countProbability(t, 1) * countDfTail(k, t - 1);
                 }
-                res += sumEfp / probabilities.stream().reduce(0d, (a, b) -> a + b) - sumFp;
             }
             dl.add(res);
         }
@@ -53,20 +65,15 @@ public class TrainCrf extends CrfImpl {
         for (int k = 0; k < lambdas.size(); k++){
             Double res = 0d;
             for (int m = 0; m < hiddens.size(); m++) {
-                ArrayList<Integer> hids = hiddens.get(m);
-                ArrayList<HashMap<String, String>> observs = observations.get(m);
+                hids = hiddens.get(m);
+                observs = observations.get(m);
                 initializeLabelsData(observs);
-                ArrayList<Double> probabilities = new ArrayList<>();
-                for (int i = 0; i < hids.size(); i++) probabilities.add(countNthProbability(i, hids.get(i)));
-                Double sumEg = 0d;
-                Double sumG = 0d;
-                for (int i = 1; i < hids.size(); i++) {
-                    Double g = getGFunction(k, hids.get(i),
-                            new String[] {observs.get(i).get("node"), observs.get(i).get("path")});
-                    sumEg += g * probabilities.get(i);
-                    sumG += g;
+                for (int t = 1; t < hids.size(); t++) {
+                    String[] attrs = new String[] {observs.get(t).get("node"), observs.get(t).get("path")};
+                    Double deltaG = getGFunction(k, 1, attrs) - getGFunction(k, -1, attrs);
+                    if (hids.get(t) == 1) res += countProbability(t, -1) * deltaG;
+                    else res += -countProbability(t, 1) * deltaG;
                 }
-                res += sumEg / probabilities.stream().reduce(0d, (a, b) -> a + b) - sumG;
             }
             dmu.add(res);
         }
@@ -77,9 +84,9 @@ public class TrainCrf extends CrfImpl {
         ArrayList<Double> dlambda = dlambdaFunc();
         ArrayList<Double> dmu = dmuFunc();
         for (int i = 0; i < lambdas.size(); i++)
-            lambdas.set(i, lambdas.get(i) - alpha * dlambda.get(i));
+            lambdas.set(i, lambdas.get(i) + alpha * dlambda.get(i));
         for (int i = 0; i < mus.size(); i++)
-            mus.set(i, mus.get(i) - alpha * dmu.get(i));
+            mus.set(i, mus.get(i) + alpha * dmu.get(i));
     }
 
     public Pair<ArrayList<Double>, ArrayList<Double>> train() {

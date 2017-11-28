@@ -3,88 +3,111 @@ import java.util.*;
 public class CrfImpl {
 
     protected final int gNumber = 3;
-    protected final int fNumber = 4;
+    protected final int fNumber = 3;
 
     protected ArrayList<Double> mus = new ArrayList<>();
     protected ArrayList<Double> lambdas = new ArrayList<>();
+
+    protected ArrayList<Integer> possibleHiddens = new ArrayList<Integer>() {{add(-1); add(1);}};
 
     private ArrayList<HashMap<String, String>> observations;
 
     private HashMap<Integer, ArrayList<Double>> countedProbabilities = new HashMap<>();
 
     public CrfImpl() {
-        for (int i = 0; i < gNumber; i++) {
-            mus.add(0.01);
+        mus = new ArrayList<Double>(){{add(1.0267745616383386); add(3.499347641382276); add(1.8528758087861708 );}};
+        lambdas = new ArrayList<Double>(){{add(1.337319019901404); add(2.7627438006692215); add(3.401339085262019);}};
+        /*for (int i = 0; i < gNumber; i++) {
+            mus.add(2d);
         }
         for (int i = 0; i < fNumber; i++) {
-            lambdas.add(0.001);
-        }
+            lambdas.add(2d);
+        }*/
     }
 
     private boolean isNumeric(String s) {
-        return s.matches("\\d+(\\.|,\\d+)?");
+        return s.matches("-?\\d+(,\\d+)?(\\.\\d+)?");
+        //chars().parallel().anyMatch(ch -> !Character.isDigit(ch) && ch != '.' && ch != ',');
     }
 
-    private boolean isLastPrice(String s) {
-        String[] tags = s.split(">");
-        return tags[tags.length - 1].contains("price");
+    private boolean tagsContain(String s, String match) {
+        String[] tags = s.split("/");
+        int n = tags.length;
+        for (int i = n - 1; i > n - 6; i--) {
+            if (i >= 0 && tags[i].matches(".*:" + match)) return true;
+        }
+        return false;
     }
 
-    protected Double getGFunction(int type, Integer hid, String vals[]) {
+    protected Double getGFunction(int type, Integer y, String vals[]) {
+        String text = vals[0];
+        String path = vals[1];
         switch (type) {
             case 0:
-                return isNumeric(vals[0]) ? (hid == 1 ? 0.75 : 0.25) : (hid == 1 ? 0d : 1d);
+                return isNumeric(text) ? (y == 1 ? 0.25 : 0.75) : (y == 1 ? 0.05 : 0.95);
             case 1:
-                return isLastPrice(vals[0]) ? (hid == 1 ? 0.75 : 0.25) : (hid == 1 ? 0d : 1d);
+                return tagsContain(path, "p-price") && tagsContain(path, "p-current-price") ?
+                        (y == 1 ? 0.85 : 0.15) : (y == 1 ? 0d : 1d);
             case 2:
-                if (isNumeric(vals[0])) {
-                    return isLastPrice(vals[0]) ? (hid == 1 ? 0.9 : 0.1) : (hid == 1 ? 0d : 1d);
-                } else {
-                    return hid == 1 ? 0d : 1d;
-                }
+                return tagsContain(path, "p-price") && tagsContain(path, "p-current-price") && isNumeric(text) ?
+                        (y == 1 ? 0.85 : 0.15) : (y == 1 ? 0.3 : 0.7);
         }
-        return -1d;
+        return 0d;
     }
 
     protected Double getFFunction(int type, Integer[] hids, String[] vals) {
-        if (hids[0] == 1)
-            return hids[1] == 1 ? 0d : 1d;
-        Integer hid = hids[1];
+        Integer prev_y = hids[0];
+        Integer y = hids[1];
+        String text = vals[0];
+        String path = vals[1];
         switch (type) {
             case 0:
-                return hids[1] == 1 ? 0.005 : 0.095;
+                if (isNumeric(text))
+                    return prev_y == 1 ? (y == 1 ? 0.4 : 0.6) : (y == 1 ? 0.25 : 0.75);
+                else
+                    return prev_y == 1 ? (y == 1 ? 0.05 : 0.95) : (y == 1 ? 0d : 1d);
             case 1:
-                return isNumeric(vals[0]) ? (hid == 1 ? 0.8 : 0.2) : (hid == 1 ? 0d : 1d);
+                if (tagsContain(path, "p-price")) {
+                    if (tagsContain(path, "p-current-price")) {
+                        return prev_y == 1 ? (y == 1 ? 0.7 : 0.3) : (y == 1 ? 0.9 : 0.1);
+                    } else return y == 1 ? 0d : 1d;
+                } else return y == 1 ? 0d : 1d;
             case 2:
-                return isLastPrice(vals[0]) ? (hid == 1 ? 0.8 : 0.2) : (hid == 1 ? 0d : 1d);
-            case 3:
-                if (isNumeric(vals[0])) {
-                    return isLastPrice(vals[0]) ? (hid == 1 ? 0.95 : 0.05) : (hid == 1 ? 0d : 1d);
+                if (isNumeric(text)) {
+                    if (tagsContain(path, "p-price")) {
+                        if (tagsContain(path, "p-current-price")) {
+                            return prev_y == 1 ? (y == 1 ? 0.95 : 0.05) : (y == 1 ? 0.8 : 0.2);
+                        } else return y == 1 ? 0d : 1d;
+                    } else return y == 1 ? 0d : 1d;
                 } else {
-                    return hid == 1 ? 0d : 1d;
+                    if (tagsContain(path, "p-price")) {
+                        if (tagsContain(path, "p-current-price")) {
+                            return prev_y == 1 ? (y == 1 ? 0.85 : 0.15) : (y == 1 ? 0d : 1d);
+                        } else return y == 1 ? 0d : 1d;
+                    } else return y == 1 ? 0d : 1d;
                 }
         }
-        return -1d;
+        return 0d;
     }
 
-    private Double countExpPower(int pNumber, Integer y) {
+    protected Double countFuncsSum(int pNumber) {
         HashMap<String, String> attrs = observations.get(pNumber);
         String[] obs = new String[] {attrs.get("node"), attrs.get("path")};
         Double fSum = 0d;
-        Double prob1 = countNthProbability(pNumber - 1, 1);
-        Double prob0 = countNthProbability(pNumber - 1, 0);
+        Double prob1 = countProbability(pNumber - 1, 1);
+        Double prob0 = countProbability(pNumber - 1, -1);
         for (int j = 0; j < fNumber; j++) {
             fSum += lambdas.get(j) * prob0 *
-                    getFFunction(j, new Integer[]{0, y}, obs);
+                    (getFFunction(j, new Integer[]{-1, 1}, obs) - getFFunction(j, new Integer[]{-1, -1}, obs));
             fSum += lambdas.get(j) * prob1 *
-                    getFFunction(j, new Integer[] {1, y}, obs);
+                    (getFFunction(j, new Integer[] {1, 1}, obs) - getFFunction(j, new Integer[] {1, -1}, obs));
         }
         Double gSum = 0d;
-        for (int j = 0; j < gNumber; j++) gSum += mus.get(j) * getGFunction(j, y, obs);
+        for (int j = 0; j < gNumber; j++) gSum += mus.get(j) * (getGFunction(j, 1, obs) - getGFunction(j, -1, obs));
         return fSum + gSum;
     }
 
-    public Double countNthProbability(int pNumber, Integer y) {
+    protected Double countProbability(int pNumber, Integer y) {
         Double pr;
         ArrayList<Double> probs = countedProbabilities.get(y);
         if (probs.get(pNumber) != null) return probs.get(pNumber);
@@ -94,27 +117,38 @@ public class CrfImpl {
             countedProbabilities.put(y, probs);
             return pr;
         }
-        pr = Math.exp(countExpPower(pNumber, y));
-        if (pr.isNaN()) {
-            System.out.println("hi");
-        }
+        pr = 1 / (1 + Math.exp(-y*countFuncsSum(pNumber)));
         probs.set(pNumber, pr);
         countedProbabilities.put(y, probs);
         return pr;
     }
 
-    public Double countWholeProbability(ArrayList<Integer> hiddens, ArrayList<HashMap<String, String>> observations) {
-        initializeLabelsData(observations);
-        return 0d;
-        //countNthProbability(hiddens.size(), o)
-        //return probabilities.stream().reduce(1d, (a, b) -> a * b) /
-         //       probabilities.stream().reduce(0d, (a, b) -> a + b);
+    public ArrayList<ArrayList<Integer>> labelData(ArrayList<ArrayList<HashMap<String, String>>> labeling) {
+        ArrayList<ArrayList<Integer>> hids = new ArrayList<>();
+        for (int m = 0; m < labeling.size(); m++) {
+            ArrayList<HashMap<String, String>> observs = labeling.get(m);
+            initializeLabelsData(observs);
+            ArrayList<Integer> res_hids = new ArrayList<>();
+            for (int i = 0; i < observs.size(); i++) {
+                Double p0 = countProbability(i, -1);
+                Double p1 = countProbability(i, 1);
+                Double summ = p0 + p1;
+                if (summ - 0.01 > 1d || summ + 0.01 < 1d) {
+                    System.err.println(p0.toString() + "   " + p1.toString());
+                }
+                if (p0 > 0.5) res_hids.add(-1);
+                else res_hids.add(1);
+            }
+            hids.add(res_hids);
+        }
+        return hids;
     }
 
     public void initializeLabelsData(ArrayList<HashMap<String, String>> observations) {
         this.observations = observations;
         countedProbabilities.clear();
-        countedProbabilities.put(0, new ArrayList<>(Collections.nCopies(observations.size(), null)));
-        countedProbabilities.put(1, new ArrayList<>(Collections.nCopies(observations.size(), null)));
+        for (int i = -1; i < possibleHiddens.size(); i += 2) {
+            countedProbabilities.put(i, new ArrayList<>(Collections.nCopies(observations.size(), null)));
+        }
     }
 }
