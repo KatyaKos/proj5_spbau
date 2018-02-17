@@ -15,7 +15,7 @@ public class Main {
 
     public static void main(String[] args) throws IOException {
         System.out.println("What do you want to do? train=1, label=2, both=3");
-        int task = (new Scanner(System.in)).nextInt();
+        final int task = (new Scanner(System.in)).nextInt();
         switch (task){
             case 1:
                 train();
@@ -29,10 +29,25 @@ public class Main {
         }
     }
 
+    private static Coefficients askSettings(int mus, int lambdas) throws IOException {
+        System.out.println("Do you want to use old coefficients if it is possible?(y/n)");
+        final String answer = (new Scanner(System.in)).nextLine();
+        if (answer.equals("y")) {
+            Coefficients coefficients = ReaderCrf.readCoefficients();
+            if (coefficients.getMusNumber() == mus && coefficients.getLambdasNumber() == lambdas) {
+                return  coefficients;
+            } else System.err.println("Using old coefficients is not possible. Their number has changed.");
+        }
+        return null;
+    }
+
     private static void train() throws IOException {
         List<TIntArrayList> hidden = ReaderCrf.readLabels(Constants.TRAIN_DATA_FILE);
         List<Attributes> observations = ReaderCrf.readAttributes(Constants.TRAIN_DATA_FILE);
         TrainCrf trainCrf = new TrainCrf(hidden, observations);
+        Coefficients coefficients = askSettings(trainCrf.gNumber, trainCrf.fNumber);
+        trainCrf.setCoefficients(coefficients);
+
         System.out.println("Start training.");
         long startTime = System.nanoTime();
         Coefficients res = trainCrf.train();
@@ -45,7 +60,7 @@ public class Main {
     private static void label() throws IOException {
         List<Attributes> observations = ReaderCrf.readAttributes(Constants.TEST_DATA_FILE);
         ReaderCrf.readAllLabels();
-        HashSet<String>[] sortedTags = ReaderCrf.readSortedTags();
+        HashSet<String>[][] sortedTags = ReaderCrf.readSortedTags();
         ArrayList<String> allTags = ReaderCrf.readAllTags();
         Coefficients coefficients = ReaderCrf.readCoefficients();
         System.out.println("Start testing.");

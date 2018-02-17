@@ -7,7 +7,6 @@ import crf.utils.Labels;
 import gnu.trove.list.array.TIntArrayList;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 
@@ -15,7 +14,7 @@ public class LabelCrf extends CrfImpl {
 
     private final int LABELS_NUMBER = Labels.getInstance().getLabelsSize();
 
-    public LabelCrf(Coefficients coefficients, HashSet<String>[] sortedTags, ArrayList<String> allTags){
+    public LabelCrf(Coefficients coefficients, HashSet<String>[][] sortedTags, ArrayList<String> allTags){
         this.coefficients = coefficients;
         final int tags = allTags.size();
         this.gNumber = tags + Constants.EXTRA_G_FUNCTIONS;
@@ -24,10 +23,6 @@ public class LabelCrf extends CrfImpl {
     }
 
     public LabelCrf(TrainCrf trainedModel) {
-        /*this.countedSums = trainedModel.countedSums;
-        this.countedExps = trainedModel.countedExps;
-        this.countedExpSums = trainedModel.countedExpSums;
-        this.countedProbabilities = trainedModel.countedProbabilities;*/
         this.coefficients = trainedModel.coefficients;
         this.gNumber = trainedModel.gNumber;
         this.fNumber = trainedModel.fNumber;
@@ -36,8 +31,7 @@ public class LabelCrf extends CrfImpl {
 
     public List<TIntArrayList> labelData(List<Attributes> attributes) {
         List<TIntArrayList> hids = new ArrayList<>();
-        for (int m = 0; m < attributes.size(); m++) {
-            Attributes observs = attributes.get(m);
+        for (Attributes observs : attributes) {
             initializeLabelsData(observs);
             TIntArrayList res_hids = new TIntArrayList();
             for (int i = 0; i < observs.size(); i++) {
@@ -51,16 +45,7 @@ public class LabelCrf extends CrfImpl {
                         max_k = k;
                     }
                 }
-                // TODO эту фигню и массив р удалить
-                if (observs.getAttribute(i).text.equals("350")) {
-                    double sdf = Arrays.stream(p).sum();
-                }
-                double summ = Arrays.stream(p).sum();
-                if (summ - 0.01 > 1d || summ + 0.01 < 1d) {
-                    System.err.println("Text " + m + " line " + i);
-                }
-                // TODO заменить на что-то нормальное
-                if (p[2] >= p[1]) max_k = 2;
+                //if (p[2] >= p[1]) max_k = 2;
                 res_hids.add(max_k);
             }
             hids.add(res_hids);

@@ -14,14 +14,15 @@ import java.util.regex.Pattern;
 
 public class CrfFunctions {
 
-    public final HashSet<String>[] sortedTags;
+    public final HashSet<String>[][] sortedTags;
     public final ArrayList<String> allTags;
     private final int allTagsSize;
     private final int extraG = Constants.EXTRA_G_FUNCTIONS;
     private final int extraF = Constants.EXTRA_F_FUNCTIONS;
     private final int defaultLabel = Labels.getInstance().defaultLabel;
+    private final int labelsNumber = Labels.getInstance().getLabelsSize();
 
-    private CrfFunctions(HashSet<String>[] sortedTags, ArrayList<String> allTags) {
+    private CrfFunctions(HashSet<String>[][] sortedTags, ArrayList<String> allTags) {
         this.sortedTags = sortedTags;
         this.allTags = allTags;
         this.allTagsSize = allTags.size();
@@ -29,27 +30,26 @@ public class CrfFunctions {
 
     public double getFFunction(int type, int prev_y, int y, Attributes.Attribute attr) {
         final String path = attr.path;
+        assert type < extraF + allTagsSize && type > -1;
         String tag = allTags.get(type - extraF);
-        if (sortedTags[y].contains(tag)){
-            if (prev_y == y) return isTag(path, tag) ? 1 : 0;
-            else return isTag(path, tag) ? 1 : 0;
-        } else return (y == defaultLabel) ? 1 : 0;
+        if (sortedTags[prev_y][y].contains(tag)) return isTag(path, tag) ? 1 : 0;
+        else return (y == defaultLabel) ? 1 : 0;
     }
 
     public double getGFunction(int type, int y, Attributes.Attribute attr) {
         final String text = attr.text;
         final String path = attr.path;
+        assert type < extraG + allTagsSize && type > -1;
         if (type == 0) return isNumeric(text) ? 1 : 0;
         if (type == 1) return isUpperCase(text) ? 1 : 0;
         if (type == 2) return isTime(text) ? 1 : 0;
         if (type == 3) return isDate(text) ? 1 : 0;
-        if (type < extraG + allTagsSize) {
-            String tag = allTags.get(type - extraG);
-            if (sortedTags[y].contains(tag))
+        String tag = allTags.get(type - extraG);
+        for (int prev_y = defaultLabel; prev_y < labelsNumber; prev_y++) {
+            if (sortedTags[prev_y][y].contains(tag))
                 return isTag(path, tag) ? 1 : 0;
-            else return (y == defaultLabel) ? 1 : 0;
         }
-        return 0d;
+        return (y == defaultLabel) ? 1 : 0;
     }
 
     private TObjectIntMap<String> numericCache = new TObjectIntHashMap<>();
@@ -122,7 +122,7 @@ public class CrfFunctions {
                 result = true;
                 break;
             } catch (ParseException e) {
-                continue;
+                //not this date format, continue
             }
         }
         dateCache.put(s, result ? 1 : -1);
@@ -139,7 +139,7 @@ public class CrfFunctions {
         return localInstance;
     }
 
-    public static CrfFunctions getInstance(HashSet<String>[] sortedTags, ArrayList<String> allTags) {
+    public static CrfFunctions getInstance(HashSet<String>[][] sortedTags, ArrayList<String> allTags) {
         CrfFunctions localInstance = instance;
         if (localInstance == null) {
             synchronized (CrfFunctions.class) {

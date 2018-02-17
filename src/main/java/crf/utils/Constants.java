@@ -20,7 +20,7 @@ public class Constants {
     public final static int EXTRA_F_FUNCTIONS = 0;
 
     // Gradient descent coefficient
-    public final static Double GRAD_DESC_COEF = 0.001;
+    public final static Double GRAD_DESC_COEF = 0.0008;
     // Number of steps to train
     public final static int GRAD_DESC_STEPS = 500;
 

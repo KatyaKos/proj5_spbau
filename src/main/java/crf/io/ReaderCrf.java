@@ -42,9 +42,7 @@ public class ReaderCrf {
             while (!(s = fin.readLine()).equals("___END___")) {
                 String[] content = StringUtils.split(s, "\t", 0);
                 int y = labels.getNumberByLabel(content[0]);
-                if (y == 0) {
-                    System.out.println("j");
-                }
+                assert y != 0;
                 hids.add(labels.getNumberByLabel(content[0]));
             }
             hids.add(labels.defaultLabel);
@@ -96,19 +94,23 @@ public class ReaderCrf {
     }
 
 
-    public static HashSet<String>[] readSortedTags() throws IOException {
+    public static HashSet<String>[][] readSortedTags() throws IOException {
         File file = new File(Constants.SORTED_TRAINING_TAGS);
         BufferedReader fin = new BufferedReader(new FileReader(file));
         String s;
-        Labels labels = Labels.getInstance();
-        HashSet<String>[] result = new HashSet[labels.getLabelsSize()];
-        for (int i = 0; i < result.length; i++)
-            result[i] = new HashSet<>();
+        final Labels labels = Labels.getInstance();
+        final int labelsSize = labels.getLabelsSize();
+        HashSet<String>[][] result = new HashSet[labelsSize][labelsSize];
+        for (int i = 0; i < labelsSize; i++)
+            for (int j = 0; j < labelsSize; j++) result[i][j] = new HashSet<>();
         fin.readLine();
         while (!(s = fin.readLine()).equals("___END___")) {
-            int i = labels.getNumberByLabel(s);
-            while (!(s = fin.readLine()).equals("___LABELS_END___")) {
-                result[i].add(s);
+            final List<String> labs = StringUtils.split2List(s, "\t");
+            assert labs.size() == 2;
+            final int prev_y = labels.getNumberByLabel(labs.get(0));
+            final int y = labels.getNumberByLabel(labs.get(1));
+            while (!(s = fin.readLine()).equals("___SEQ-END___")) {
+                result[prev_y][y].add(s);
             }
         }
         return result;
@@ -117,7 +119,6 @@ public class ReaderCrf {
         File file = new File(Constants.ALL_TRAINING_TAGS);
         BufferedReader fin = new BufferedReader(new FileReader(file));
         String s;
-        Labels labels = Labels.getInstance();
         ArrayList<String> result = new ArrayList<>();
         fin.readLine();
         while (!(s = fin.readLine()).equals("___END___")) {

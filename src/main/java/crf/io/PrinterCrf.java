@@ -33,19 +33,25 @@ public class PrinterCrf {
         fw.close();
     }
 
-    public static void printTrainingTags(HashSet<String>[] sortedTags, ArrayList<String> allTags) throws IOException {
+    public static void printTrainingTags(HashSet<String>[][] sortedTags, ArrayList<String> allTags) throws IOException {
         FileWriter fw = new FileWriter(new File(Constants.SORTED_TRAINING_TAGS));
+        Labels labels = Labels.getInstance();
+        final int defaultLabel = Labels.getInstance().defaultLabel;
+        final int labelsSize = Labels.getInstance().getLabelsSize();
         BufferedWriter fout = new BufferedWriter(fw);
         fout.write("___SORTED_TAGS___\n");
-        for (int i = 2; i < sortedTags.length; i++) {
-            Iterator<String> iterator = sortedTags[i].iterator();
-            StringBuilder builder = new StringBuilder();
-            builder.append(Labels.getInstance().getLabelByNumber(i)).append("\n");
-            while (iterator.hasNext()) {
-                builder.append(iterator.next()).append("\n");
+        for (int prev_y = defaultLabel; prev_y < labelsSize; prev_y++) {
+            for (int y = defaultLabel + 1; y < labelsSize; y++) {
+                Iterator<String> iterator = sortedTags[prev_y][y].iterator();
+                StringBuilder builder = new StringBuilder();
+                builder.append(labels.getLabelByNumber(prev_y)).append("\t")
+                        .append(labels.getLabelByNumber(y)).append("\n");
+                while (iterator.hasNext()) {
+                    builder.append(iterator.next()).append("\n");
+                }
+                builder.append("___SEQ-END___\n");
+                fout.write(builder.toString());
             }
-            builder.append("___LABELS_END___\n");
-            fout.write(builder.toString());
         }
         fout.write("___END___");
         fout.close();

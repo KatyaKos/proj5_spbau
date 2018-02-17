@@ -1,7 +1,8 @@
 package crf.utils;
 
-import crf.CrfImpl;
 import gnu.trove.list.array.TDoubleArrayList;
+
+import static crf.utils.TDoubleArrayList2.fillTDouble;
 
 public class Coefficients {
     private final int LAMBDAS_NUMBER;
@@ -13,8 +14,8 @@ public class Coefficients {
     public Coefficients(int lambdas, int mus) {
         LAMBDAS_NUMBER = lambdas;
         MUS_NUMBER = mus;
-        this.mus = CrfImpl.fillTDouble(mus, 1d);
-        this.lambdas = CrfImpl.fillTDouble(lambdas, 1d);
+        this.mus = fillTDouble(mus, 1d);
+        this.lambdas = fillTDouble(lambdas, 1d);
     }
 
     public double[] getAllLambdas() {

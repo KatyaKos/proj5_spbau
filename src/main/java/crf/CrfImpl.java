@@ -5,6 +5,8 @@ import crf.utils.Coefficients;
 import crf.utils.Labels;
 import gnu.trove.list.array.TDoubleArrayList;
 
+import static crf.utils.TDoubleArrayList2.fillTDouble;
+
 public abstract class CrfImpl {
 
     public int gNumber;
@@ -92,11 +94,5 @@ public abstract class CrfImpl {
             countedSums[i] = new TDoubleArrayList(temp);
         }
         countedExpSums = fillTDouble(observations.size(), 0d);
-    }
-
-    public static TDoubleArrayList fillTDouble(int size, double value) {
-        double[] tmp = new double[size];
-        for (int i = 0; i < size; i++) tmp[i] = value;
-        return new TDoubleArrayList(tmp);
     }
 }
