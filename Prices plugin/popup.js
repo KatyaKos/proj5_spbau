@@ -123,14 +123,21 @@ function showTags() {
 }
 
 function removeTags(callback) {
-    chrome.storage.local.clear(callback);
+    chrome.storage.local.remove("tags", callback);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('save_html').addEventListener('click', () => {
         var filename = document.getElementById('input_filename').value;
-        if (filename == '') filename = "avito";
-        download(filename);
+        if (filename != '') {
+            chrome.storage.local.set({ "filename": filename }, download(filename));
+        } else {
+            chrome.storage.local.get("filename", function (items) {
+                var name = items.filename;
+                if (typeof (name) == 'undefined') name = "";
+                download(name);
+            });
+        }
     });
     document.getElementById('save_tag').addEventListener('click', () => {
         var tagname = document.getElementById('input_tagname').value;
